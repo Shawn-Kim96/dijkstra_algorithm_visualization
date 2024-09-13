@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import os
 import matplotlib
 matplotlib.use('TkAgg')
+SJSU_ID = "018219422"
 
 
 class DataProcessor:
@@ -48,7 +49,7 @@ class DataProcessor:
 
         # second, get the information about distance from 4th line
         distance_info = input_info[3:]
-        distance_info.sort()
+        distance_info.sort()  # to maintain node order (starting from small)
         for start, end, distance in distance_info:
             start, end, distance = int(start), int(end), float(distance)
             self.graph_info[start].append((end, distance))
@@ -74,13 +75,13 @@ class DataProcessor:
 
         """
         # use heapq (priority queue) to implement this algorithm
-        priority_queue = [(0, [self.start_node])]  # (distance: float, path: list)
+        priority_queue = [(0, [self.start_node], [0])]  # (distance: float, path: list, distance_history: list)
 
         # to ignore duplicates, we use graph to check whether we have visited a node.
-        distance_history = {node: float('inf') for node in self.graph_info.keys()}
-        distance_history[self.start_node] = 0
+        min_distance_from_start = [float('inf')] * len(self.node_info)
+        min_distance_from_start[self.start_node] = 0
 
-        result = []
+        result = []  # final optimized distance path
 
         # add visualize steps.
         visualize_dict = {
@@ -88,20 +89,16 @@ class DataProcessor:
             "node_searching": [],  # blue
         }
         step, previous_distance= 0, 0
-        step_nodes = []
-        step_edges = []
 
         while priority_queue:
-            current_distance, path = heapq.heappop(priority_queue)
+            current_distance, path, distance_history = heapq.heappop(priority_queue)
             current_node = path[-1]
+            min_distance_from_start[current_node] = current_distance
 
-            if current_distance > distance_history[current_node]:
-                continue
-            
             if current_distance > previous_distance:
                 step += 1
                 previous_distance = current_distance
-                self.generate_image_for_step(step, visualize_dict)
+                # self.generate_image_for_step(step, visualize_dict)
 
                 # update step_nodes (move to searched, and initalize searching)
                 visualize_dict["node_searched"].extend(visualize_dict["node_searching"])
@@ -111,19 +108,17 @@ class DataProcessor:
                 
             elif current_distance == previous_distance:
                 visualize_dict["node_searching"].append(self.node_info[current_node])
-                
-
-            distance_history[current_node] = current_distance
 
             for next_node, diff_distance in self.graph_info[current_node]:
                 next_distance = current_distance + diff_distance
+                distance_history = distance_history + [next_distance]
                 
-                if next_node == self.end_node:
-                    result.append((next_distance, path + [next_node]))
+                if next_node == self.end_node and not result:
+                    result = (path + [next_node], distance_history)
                 
-                if next_distance < distance_history[next_node]:
-                    distance_history[next_node] = next_distance
-                    heapq.heappush(priority_queue, (next_distance, path + [next_node]))
+                if next_distance < min_distance_from_start[next_node]:
+                    min_distance_from_start[next_node] = next_distance
+                    heapq.heappush(priority_queue, (next_distance, path + [next_node], distance_history))
         
         return result
     
@@ -159,11 +154,7 @@ class DataProcessor:
         return fig, ax
         
 
-
-    def generate_image_for_step(self, step, visualize_dict):
-
-        # TODO: have to generate a base image (graph with node, road)
-        
+    def generate_image_for_step(self, step, visualize_dict):        
         fig, ax = self.generate_base_graph_image()
         start_and_end_node = [self.node_info[self.start_node], self.node_info[self.end_node]]
         for state, node_list in visualize_dict.items():
@@ -183,11 +174,36 @@ class DataProcessor:
 
         fig.savefig(f'images/{step}.png')
         fig.clear()
+    
+
+    def generate_final_image(self, optimized_path):
+        fig, ax = self.generate_base_graph_image()
+        for i in range(len(optimized_path)-1):
+            path_start_node, path_end_node = optimized_path[i], optimized_path[i+1]
+            node1_x, node1_y = self.node_info[path_start_node]
+            node2_x, node2_y = self.node_info[path_end_node]
+            ax.plot([node1_x, node2_x], [node1_y, node2_y], 'r-', linewidth=1, alpha=1)
+
+        fig.savefig(f'images/final.png')
+        fig.clear()
+
+    
+    def generate_output_file(self, path_history, distance_history):
+        node_info_string = " ".join([str(x) for x in path_history])
+        distance_info_string = " ".join([f"{x:.5f}" for x in distance_history])
+
+        with open(f"{SJSU_ID}.txt", "w") as file:
+            file.write(node_info_string + '\n' + distance_info_string)
+
+
+    def main(self):
+        self.process_input_files()
+        optimized_path, optimized_distance_history = self.dijkstras_algorithm()
+        self.generate_final_image(optimized_path)
+        self.generate_output_file(optimized_path, optimized_distance_history)
 
 
 
 if __name__ == "__main__":
     dp = DataProcessor()
-    dp.process_input_files()
-    result = dp.dijkstras_algorithm()
-    print(1)
+    dp.main()
