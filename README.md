@@ -17,6 +17,7 @@ This Python script implements Dijkstra's algorithm to find the shortest path bet
 - Python `3.10` (`3.10.5` preferred)
 - matplotlib
 - opencv-python
+- tqdm
 
 ## Installation
 You can set up the Python environment using either requirements.txt with pip or using Poetry.

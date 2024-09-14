@@ -9,6 +9,7 @@ readme = "README.md"
 python = "3.10.*"
 matplotlib = "^3.9.2"
 opencv-python = "^4.10.0.84"
+tqdm = "^4.66.5"
 
 
 [build-system]
