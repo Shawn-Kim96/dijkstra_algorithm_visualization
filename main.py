@@ -1,19 +1,28 @@
 """
-input.txt file will be in the same directory file.
+Script Description:
+-------------------
 
-1. get the maximum x, y to generate a matrix.
-2. make a list of nodes.
+This Python script implements Dijkstra's algorithm to find the shortest path between two nodes in a graph. The graph is defined by the input files `input.txt` and `coords.txt`, which should be located in the same directory as this script.
 
-file format
-- input.txt
-total_number_of_nodes
-start_node
-end_node
-start_node, end_node, distance
-...
+Key Features:
+- **Graph Input Processing**: Reads graph edges and nodes from `input.txt` and node coordinates from `coords.txt`.
+- **Shortest Path Calculation**: Uses a priority queue to efficiently compute the shortest path between the specified start and end nodes.
+- **Visualization**: Generates images at each step of the algorithm to visualize the search process.
+- **Video Generation**: Optionally creates a video from the generated images using FFmpeg.
+- **Command-Line Interface**: Allows control over video generation via command-line arguments.
+- **Output**: Writes the shortest path and corresponding distances to a text file named `<SJSU_ID>.txt`.
 
-- coord.txt
-node_number x y
+
+Usage:
+------
+
+Run the script with the option to generate a video (`--video 1`) or not (`--video 0`):
+Run the script with the option to determine video frame rate by (`--steps_per_frame FRAME_RATE`):
+
+```bash
+python main.py --video 1  --steps_per_frame 3  # Generates the video
+python main.py --video 0  # Does not generate the video
+```
 """
 
 from collections import defaultdict
@@ -32,12 +41,11 @@ class DataProcessor:
         self.n = 0
         self.start_node = 0
         self.end_node = 0
-        self.graph_info = defaultdict(list)  # graph with data structure of hash map; (node, distance)
+        self.graph_info = defaultdict(list)  # graph with data structure of hash map; start_node: [(node1, distance1), (node2, distance2), ... ]
         self.node_info = [(None, None)]  # node_info[i] = ith node (x, y), 0th index have no meaning
-        self.fig, self.ax = None, None  # base background image for video
-        self.node_scatters = {}
-        self.make_video = make_video
-        self.steps_per_frame = int(steps_per_frame)
+        self.fig, self.ax = None, None  # base background image for video, update graph based on this fig, ax.
+        self.make_video = make_video  # determine whether to make video
+        self.steps_per_frame = int(steps_per_frame)  # video frame per dijkstra algorithm step
     
     def process_input_files(self):
         # process input.txt
