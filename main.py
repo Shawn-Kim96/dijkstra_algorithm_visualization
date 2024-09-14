@@ -31,8 +31,12 @@ import matplotlib.pyplot as plt
 import os
 import cv2
 import argparse
+from tqdm import tqdm
+import logging
+import time
 
 SJSU_ID = "018219422"
+logging.basicConfig(level=logging.INFO)
 
 
 class DataProcessor:
@@ -49,7 +53,7 @@ class DataProcessor:
     
     def process_input_files(self):
         # process input.txt
-        
+        logging.info("[Data Preprocessing] :: input.txt")
         input_info = []
         with open('input.txt', 'r') as f:
             for context in f:
@@ -69,6 +73,7 @@ class DataProcessor:
             self.graph_info[end].append((start, distance))
 
         # process coords.txt
+        logging.info("[Data Preprocessing] :: coords.txt")
         with open('coords.txt', 'r') as f:
             for context in f:
                 x, y = context.rstrip('\n').split(' ')
@@ -87,6 +92,7 @@ class DataProcessor:
             - Use heapq to always obtain the smallest distance with the path.
 
         """
+        logging.info("[Running Algorithm] :: Running Dijkstras Algorithm and generating images")
         # use heapq (priority queue) to implement this algorithm
         priority_queue = [(0, [self.start_node], [0])]  # (distance: float, path: list, distance_history: list)
 
@@ -102,41 +108,44 @@ class DataProcessor:
             "node_searching": [],  # blue
         }
         step, previous_distance= 0, 0
-
-        while priority_queue:
-            current_distance, path, distance_history = heapq.heappop(priority_queue)
-            current_node = path[-1]
-
-            min_distance_from_start[current_node] = current_distance
-
-            # update visualize_dict for images
-            if current_distance > previous_distance:
-                step += 1
-                previous_distance = current_distance
-
-            # generate video for every steps_per_frame
-            visualize_dict["node_searching"].append(self.node_info[current_node])
-            if step % self.steps_per_frame == 0:
-                self.generate_image_for_step(step, visualize_dict)
-                # update step_nodes (move to searched, and initalize searching)
-                visualize_dict["node_searched"].extend(visualize_dict["node_searching"])
-                visualize_dict["node_searching"] = []
-                
-                # visualize_dict["node_searching"] = [self.node_info[current_node]]
-                step += 1
-                
-            
-            for next_node, diff_distance in self.graph_info[current_node]:
-                next_distance = current_distance + diff_distance
-                distance_history = distance_history + [next_distance]
-                
-                if next_node == self.end_node and not result:
-                    result = (path + [next_node], distance_history)
-                
-                if next_distance < min_distance_from_start[next_node]:
-                    min_distance_from_start[next_node] = next_distance
-                    heapq.heappush(priority_queue, (next_distance, path + [next_node], distance_history))
         
+        with tqdm(desc="Processing Nodes") as pbar:
+            while priority_queue:
+                current_distance, path, distance_history = heapq.heappop(priority_queue)
+                current_node = path[-1]
+
+                min_distance_from_start[current_node] = current_distance
+
+                # update visualize_dict for images
+                if current_distance > previous_distance:
+                    step += 1
+                    previous_distance = current_distance
+
+                # generate video for every steps_per_frame
+                visualize_dict["node_searching"].append(self.node_info[current_node])
+                if step % self.steps_per_frame == 0:
+                    self.generate_image_for_step(step, visualize_dict)
+                    # update step_nodes (move to searched, and initalize searching)
+                    visualize_dict["node_searched"].extend(visualize_dict["node_searching"])
+                    visualize_dict["node_searching"] = []
+                    
+                    # visualize_dict["node_searching"] = [self.node_info[current_node]]
+                    step += 1
+                    
+                
+                for next_node, diff_distance in self.graph_info[current_node]:
+                    next_distance = current_distance + diff_distance
+                    distance_history = distance_history + [next_distance]
+                    
+                    if next_node == self.end_node and not result:
+                        result = (path + [next_node], distance_history)
+                    
+                    if next_distance < min_distance_from_start[next_node]:
+                        min_distance_from_start[next_node] = next_distance
+                        heapq.heappush(priority_queue, (next_distance, path + [next_node], distance_history))
+                
+                pbar.update(1)
+
         return result
     
 
@@ -195,6 +204,7 @@ class DataProcessor:
     
 
     def generate_final_image(self, optimized_path):
+        logging.info("[Data Visualization] :: Generating final image")
         self.fig, self.ax = None, None
         self.generate_base_graph_image()
         for i in range(len(optimized_path)-1):
@@ -208,6 +218,7 @@ class DataProcessor:
 
     
     def generate_output_file(self, path_history, distance_history):
+        logging.info("[Data Result] :: Generating output.txt")
         node_info_string = " ".join([str(x) for x in path_history])
         distance_info_string = " ".join([f"{x:.5f}" for x in distance_history])
 
@@ -216,6 +227,7 @@ class DataProcessor:
 
 
     def generate_video_from_images(self):
+        logging.info(f"[Data Visualization] :: Generating video, steps_per_frame = {self.steps_per_frame}")
         image_path_list = sorted([f"images/{x}" for x in os.listdir('images/') if '.png' in x])
         image_list = [cv2.imread(x) for x in image_path_list]
         
@@ -233,11 +245,14 @@ class DataProcessor:
         
         
     def main(self):
+        start_time = time.time()
         self.process_input_files()
         optimized_path, optimized_distance_history = self.dijkstras_algorithm()
         self.generate_final_image(optimized_path)
         self.generate_output_file(optimized_path, optimized_distance_history)
         self.generate_video_from_images()
+        end_time = time.time()
+        logging.info(f"Visualizing Dijkstras Algorithm completed. Total time = {end_time - start_time:.3f}[s]")
 
 
 
@@ -248,5 +263,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dp = DataProcessor(make_video=bool(args.video), steps_per_frame=args.steps_per_frame)
-    # dp = DataProcessor(make_video=True, steps_per_frame=3)
     dp.main()
