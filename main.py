@@ -52,6 +52,9 @@ class DataProcessor:
         self.steps_per_frame = int(steps_per_frame)  # video frame per dijkstra algorithm step
     
     def process_input_files(self):
+        """
+        preprocess input files.
+        """
         # process input.txt
         logging.info("[Data Preprocessing] :: input.txt")
         input_info = []
@@ -59,12 +62,12 @@ class DataProcessor:
             for context in f:
                 input_info.append(context.rstrip('\n').split(' '))
 
-        # first, get the information from first 3 lines
+        # 1. get the information from first 3 lines
         _, self.start_node, self.end_node = input_info[:3]
         self.start_node = int(self.start_node[0])
         self.end_node = int(self.end_node[0])
 
-        # second, get the information about distance from 4th line
+        # 2. get the information about distance from 4th line
         distance_info = input_info[3:]
         distance_info.sort()  # to maintain node order (starting from small)
         for start, end, distance in distance_info:
@@ -88,7 +91,7 @@ class DataProcessor:
         method: use breadth-first-search to implement dijkstra's algorithm
 
         1. start with inital point (self.start_node)
-        2. iterate the neighborhood node, and append it to queue.
+        2. iterate the neighborhood node, and append it to priority queue.
             - Use heapq to always obtain the smallest distance with the path.
 
         """
@@ -100,13 +103,12 @@ class DataProcessor:
         min_distance_from_start = defaultdict(lambda: float('inf'))
         min_distance_from_start[self.start_node] = 0.0
 
-        result = []  # final optimized distance path
-
-        # add visualize steps.
+        # hash map for visualization
         visualize_dict = {
             "node_searched": [],  # black
             "node_searching": [],  # blue
         }
+        result = []  # final optimized distance path
         step, previous_distance= 0, 0
         
         with tqdm(desc="Processing Nodes") as pbar:
@@ -150,7 +152,9 @@ class DataProcessor:
     
 
     def generate_base_graph_image(self):
-        # maximum length will be size of 12
+        """
+        generate graph image that is used for all steps.
+        """
         if self.fig is not None and self.ax is not None:
             return
 
@@ -163,24 +167,27 @@ class DataProcessor:
         
         self.fig, self.ax = plt.subplots(figsize=figsize)
 
+        # 1. draw all edges in graph
         for node1, neighbors_info in self.graph_info.items():
             node1_x, node1_y = self.node_info[node1]
             for node2, _ in neighbors_info:
                 node2_x, node2_y = self.node_info[node2]
                 self.ax.plot([node1_x, node2_x], [node1_y, node2_y], 'b-', linewidth=0.5, alpha=0.2)
         
-        for node_num, (x, y) in enumerate(self.node_info[1:]):
+        # 2. draw all nodes in graph
+        for _, (x, y) in enumerate(self.node_info[1:]):
             self.ax.scatter(x, y, s=50, color='tab:blue', alpha=0.5)
-            # annotation_distance = 0.3
-            # ax.annotate(node_num, (x, y), xytext=(x-annotation_distance, y-annotation_distance))
-        
+            
         start_x, start_y = self.node_info[self.start_node]
         end_x, end_y = self.node_info[self.end_node]
         self.ax.scatter(start_x, start_y, s = 300, color = 'g', alpha=1)
         self.ax.scatter(end_x, end_y, s = 300, color = 'r', alpha=1)
         
 
-    def generate_image_for_step(self, step, visualize_dict):        
+    def generate_image_for_step(self, step, visualize_dict):
+        """
+        generate graph image for every steps.
+        """        
         self.generate_base_graph_image()
         start_and_end_node = [self.node_info[self.start_node], self.node_info[self.end_node]]
 
@@ -204,6 +211,9 @@ class DataProcessor:
     
 
     def generate_final_image(self, optimized_path):
+        """
+        generate graph image that is used for final step.
+        """
         logging.info("[Data Visualization] :: Generating final image")
         self.fig, self.ax = None, None
         self.generate_base_graph_image()
@@ -218,6 +228,9 @@ class DataProcessor:
 
     
     def generate_output_file(self, path_history, distance_history):
+        """
+        generate output.txt file.
+        """
         logging.info("[Data Result] :: Generating output.txt")
         node_info_string = " ".join([str(x) for x in path_history])
         distance_info_string = " ".join([f"{x:.5f}" for x in distance_history])
@@ -227,6 +240,9 @@ class DataProcessor:
 
 
     def generate_video_from_images(self):
+        """
+        generate video based on graph images.
+        """
         logging.info(f"[Data Visualization] :: Generating video, steps_per_frame = {self.steps_per_frame}")
         image_path_list = sorted([f"images/{x}" for x in os.listdir('images/') if '.png' in x])
         image_list = [cv2.imread(x) for x in image_path_list]
