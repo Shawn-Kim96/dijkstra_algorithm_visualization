@@ -137,14 +137,13 @@ class DataProcessor:
                 
                 for next_node, diff_distance in self.graph_info[current_node]:
                     next_distance = current_distance + diff_distance
-                    distance_history = distance_history + [next_distance]
                     
                     if next_node == self.end_node and not result:
-                        result = (path + [next_node], distance_history)
+                        result = (path + [next_node], distance_history + [next_distance])
                     
                     if next_distance < min_distance_from_start[next_node]:
                         min_distance_from_start[next_node] = next_distance
-                        heapq.heappush(priority_queue, (next_distance, path + [next_node], distance_history))
+                        heapq.heappush(priority_queue, (next_distance, path + [next_node], distance_history + [next_distance]))
                 
                 pbar.update(1)
 
